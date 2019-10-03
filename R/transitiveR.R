@@ -97,7 +97,7 @@ transitive.closure <- function(po, from, to, roots = NULL){
 #' @export
 #'
 #' @examples
-transitive.summary <- function(tr, from, to, extended = F, level_suffix = 'L_', path_sep = "*"){
+transitive.summary <- function(tr, from, to, extended = F, level_prefix = 'L_', path_sep = "*"){
 
   tr <- as.tbl(tr)
 
@@ -126,7 +126,7 @@ transitive.summary <- function(tr, from, to, extended = F, level_suffix = 'L_', 
       inner_join(
         tr.h %>%
           dplyr::select(!!from, level, !!to) %>%
-          dplyr::mutate(level = paste0(level_suffix, level)) %>%
+          dplyr::mutate(level = paste0(level_prefix, level)) %>%
           tidyr::spread(level, !!to, convert = F)
         ,by = dplyr::quo_name(from)
       ) %>%
