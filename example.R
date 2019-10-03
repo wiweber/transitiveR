@@ -19,6 +19,7 @@ tr
 tr.sum <- transitive.summary(tr, d, a, extended = T, path_sep = '<-')
 tr.sum
 
+# using trasitive.closure result direct
 tc_data %>% inner_join(tr, by = c("id" = "d")) %>%
   group_by(a) %>%
   summarise(
@@ -28,6 +29,18 @@ tc_data %>% inner_join(tr, by = c("id" = "d")) %>%
     mean = mean(i)
   )
 
+# using tc on the fly
+data <- tc_data %>%
+  left_join(tc_po, by = c("id" = "d"))
+
+# using convinient function tc_group_by and do dplyr::summarize after
+data %>%
+  tc_group_by(id, a) %>%
+  summarise(n = n(), s = sum(i))
+
+# using convinient function tc_summarize
+data %>%
+  tc_summarize(id, a, n = n(), s = sum(i), diff = s / n, )
 
 
 

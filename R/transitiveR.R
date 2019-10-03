@@ -26,18 +26,18 @@ transitive.closure <- function(po, from, to, roots = NULL){
     warning(paste0(nrow(reflexiv.relation), " reflexive relation(s) detected!"))
 
   # check 4 direct cyclic relations
-  cyclic.relation <- po %>% semi_join(po, by = c(quo_name(to), quo_name(from)) %>% setNames(rev(.))) %>% filter(!!from != !!to)
+  cyclic.relation <- po %>% dplyr::semi_join(po, by = c(dplyr::quo_name(to), dplyr::quo_name(from)) %>% setNames(rev(.))) %>% filter(!!from != !!to)
   if(nrow(cyclic.relation) > 0)
     stop(paste0((nrow(cyclic.relation)/2), " direct cyclic relation(s) detected!"))
 
   #check 4 multiple parents
-  multiple.parents <- po %>% filter(!!from != !!to & duplicated(!!from)) %>% pull(!!from)
+  multiple.parents <- po %>% dplyr::filter(!!from != !!to & duplicated(!!from)) %>% dplyr::pull(!!from)
   if(length(multiple.parents) > 0){
     err = po %>%
-      filter(!!from %in% multiple.parents) %>%
-      group_by(!!from) %>%
-      summarise(p = paste0(first(!!from), "->(",paste0(!!to, collapse = ","),")")) %>%
-      pull(p) %>% paste0(collapse = ",") %>% paste0("Multiple parents detected: ", . )
+      dplyr::filter(!!from %in% multiple.parents) %>%
+      dplyr::group_by(!!from) %>%
+      dplyr::summarise(p = paste0(first(!!from), "->(",paste0(!!to, collapse = ","),")")) %>%
+      dplyr::pull(p) %>% paste0(collapse = ",") %>% paste0("Multiple parents detected: ", . )
     stop(err)
   }
 
@@ -48,7 +48,10 @@ transitive.closure <- function(po, from, to, roots = NULL){
   # logic -------------------------------------------------------------------
 
   if(is.null(roots))
-    roots <- po %>% dplyr::filter(!(!!to %in% po[[dplyr::quo_name(from)]])) %>% dplyr::pull(!!to) %>% unique()
+    if(any(is.na(po[[dplyr::quo_name(to)]])))
+      roots <- po %>% dplyr::filter(is.na(!!to)) %>% dplyr::pull(!!from) %>% unique()
+    else
+      roots <- po %>% dplyr::filter(!(!!to %in% po[[dplyr::quo_name(from)]])) %>% dplyr::pull(!!to) %>% unique()
 
   if(nrow(po %>% dplyr::filter(!!to %in% roots)) == 0)
     stop(paste0(paste0(root, collapse = ","), " as root is invalid!"))
@@ -134,3 +137,51 @@ transitive.summary <- function(tr, from, to, extended = F, level_suffix = 'L_', 
   return(tr.sum)
 
 }
+
+#' Title
+#'
+#' @param data
+#' @param from
+#' @param to
+#'
+#' @return
+#' @export
+#'
+#' @examples
+tc_group_by <- function(data, from, to){
+
+  data <- as.tbl(data)
+
+  from <- dplyr::enquo(from)
+  to <- dplyr::enquo(to)
+
+  po <- data %>% dplyr::select(!!from, !!to)
+  data <- data %>% dplyr::select(-c(!!to))
+
+  transitive.closure(po, !!from, !!to) %>%
+    dplyr::left_join(data, by = dplyr::quo_name(from)) %>%
+    dplyr::mutate(!!to := dplyr::coalesce(!!to, !!from)) %>%
+    dplyr::group_by(!!to)
+
+}
+
+#' Title
+#'
+#' @param data
+#' @param from
+#' @param to
+#' @param ...
+#'
+#' @return
+#' @export
+#'
+#' @examples
+tc_summarize <- function(data, from, to, ...){
+
+  from <- dplyr::enquo(from)
+  to <- dplyr::enquo(to)
+
+  tc_group_by(data, !!from, !!to) %>% summarise(...)
+
+}
+
