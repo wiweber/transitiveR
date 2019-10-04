@@ -1,4 +1,7 @@
-require(tidyverse)
+require(dplyr)
+require(tidyr)
+
+load("tc.demo.RData")
 
 #' transitive.closure
 #'
@@ -13,10 +16,10 @@ require(tidyverse)
 #' @examples
 transitive.closure <- function(po, from, to, roots = NULL){
 
-  po <- dplyr::as.tbl(unique(po))
-
   from <- dplyr::enquo(from)
   to <- dplyr::enquo(to)
+
+  po <- dplyr::as.tbl(unique(po)) %>% select(!!from, !!to)
 
   # validations -------------------------------------------------------------
 
@@ -50,8 +53,12 @@ transitive.closure <- function(po, from, to, roots = NULL){
   if(is.null(roots))
     if(any(is.na(po[[dplyr::quo_name(to)]])))
       roots <- po %>% dplyr::filter(is.na(!!to)) %>% dplyr::pull(!!from) %>% unique()
-    else
-      roots <- po %>% dplyr::filter(!(!!to %in% po[[dplyr::quo_name(from)]])) %>% dplyr::pull(!!to) %>% unique()
+    else{
+      # need to extract cause of character vector !!to
+      to_vec <- po[[dplyr::quo_name(from)]]
+      roots <- po %>% dplyr::filter(!(!!to %in% to_vec)) %>% dplyr::pull(!!to) %>% unique()
+      rm(to_vec)
+    }
 
   if(nrow(po %>% dplyr::filter(!!to %in% roots)) == 0)
     stop(paste0(paste0(root, collapse = ","), " as root is invalid!"))
@@ -82,6 +89,7 @@ transitive.closure <- function(po, from, to, roots = NULL){
   }
 
   return(unique(result) %>% arrange(!!from, !!to))
+
 }
 
 #' transitive.summary
@@ -130,7 +138,8 @@ transitive.summary <- function(tr, from, to, extended = F, level_prefix = 'L_', 
           tidyr::spread(level, !!to, convert = F)
         ,by = dplyr::quo_name(from)
       ) %>%
-      dplyr::arrange(path)
+      dplyr::arrange(path) %>%
+      select(one_of(c(dplyr::quo_name(from), "level", "childs","is_child", "path", paste0(level_prefix, tr.h$level)[order(tr.h$level)])))
 
   }
 
@@ -150,16 +159,28 @@ transitive.summary <- function(tr, from, to, extended = F, level_prefix = 'L_', 
 #' @examples
 tc_group_by <- function(data, from, to){
 
-  data <- as.tbl(data)
+  from <- dplyr::enquo(from)
+  to <- dplyr::enquo(to)
+
+  tc_group_by_(data, !!from, !!to)
+}
+
+tc_group_by_ <- function(data, from, to, tc = NULL, by = NULL){
+
+  data <- dplyr::as.tbl(data)
 
   from <- dplyr::enquo(from)
   to <- dplyr::enquo(to)
 
-  po <- data %>% dplyr::select(!!from, !!to)
-  data <- data %>% dplyr::select(-c(!!to))
+  if(is.null(tc)) {
+    po <- data %>% dplyr::select(!!from, !!to)
+    data <- data %>% dplyr::select(-c(!!to))
+    tc <- transitive.closure(po, !!from, !!to)
+    by <- dplyr::quo_name(from)
+  }
 
-  transitive.closure(po, !!from, !!to) %>%
-    dplyr::left_join(data, by = dplyr::quo_name(from)) %>%
+  data %>%
+    dplyr::right_join(tc, by = by) %>%
     dplyr::mutate(!!to := dplyr::coalesce(!!to, !!from)) %>%
     dplyr::group_by(!!to)
 

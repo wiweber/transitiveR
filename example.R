@@ -34,13 +34,19 @@ data <- tc_data %>%
   left_join(tc_po, by = c("id" = "d"))
 
 # using convinient function tc_group_by and do dplyr::summarize after
-data %>%
-  tc_group_by(id, a) %>%
-  summarise(n = n(), s = sum(i))
-
+system.time(
+  data %>%
+    tc_group_by(id, a) %>%
+    summarise(n = n(), s = sum(i))
+)
 # using convinient function tc_summarize
-data %>%
-  tc_summarize(id, a, n = n(), s = sum(i), diff = s / n, )
+system.time(
+  data %>%
+    tc_summarize(id, a, n = n(), s = sum(i), diff = s / n, )
+)
 
-
-
+system.time(
+  tc_data %>%
+    tc_group_by_(id, a, tr, by = c("id" = "d")) %>%
+    summarise(n = n(), s = sum(i))
+)
