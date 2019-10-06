@@ -162,7 +162,8 @@ tc_group_by <- function(data, from, to){
   from <- dplyr::enquo(from)
   to <- dplyr::enquo(to)
 
-  tc_group_by_(data, !!from, !!to)
+  (tc_group_by_(data, !!from, !!to))$data
+
 }
 
 tc_group_by_ <- function(data, from, to, tc = NULL, by = NULL){
@@ -179,10 +180,12 @@ tc_group_by_ <- function(data, from, to, tc = NULL, by = NULL){
     by <- dplyr::quo_name(from)
   }
 
-  data %>%
-    dplyr::right_join(tc, by = by) %>%
-    dplyr::mutate(!!to := dplyr::coalesce(!!to, !!from)) %>%
-    dplyr::group_by(!!to)
+  list(data = data %>%
+        dplyr::right_join(tc, by = by) %>%
+        dplyr::mutate(!!to := dplyr::coalesce(!!to, !!from)) %>%
+        dplyr::group_by(!!to),
+      tc = tc
+  )
 
 }
 
@@ -202,7 +205,7 @@ tc_summarize <- function(data, from, to, ...){
   from <- dplyr::enquo(from)
   to <- dplyr::enquo(to)
 
-  tc_group_by(data, !!from, !!to) %>% summarise(...)
+  (tc_group_by_(data, !!from, !!to))$data %>% summarise(...)
 
 }
 
