@@ -1,5 +1,3 @@
-require(dplyr)
-require(tidyr)
 
 load("tc.demo.RData")
 
@@ -194,6 +192,7 @@ tc_group_by_ <- function(data, from, to, tc = NULL, by = NULL){
 #' @param data
 #' @param from
 #' @param to
+#' @param tc
 #' @param ...
 #'
 #' @return
